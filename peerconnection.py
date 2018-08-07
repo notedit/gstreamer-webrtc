@@ -16,9 +16,9 @@ gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 gi.require_version('GstSdp', '1.0')
 from gi.repository import GstSdp
+from gi.repository import GLib
 
 Gst.init(None)
-GObject.threads_init()
 
 PIPELINE_DESC = '''
 webrtcbin name=sendrecv
@@ -83,7 +83,7 @@ class WebRTC(EventEmitter):
             'candidate': candidate
         })
 
-    
+
     def add_transceiver(self, direction, codec):
         upcodec = codec.upper()
         caps = None
@@ -143,7 +143,7 @@ class WebRTC(EventEmitter):
         self.webrtc.emit('set-remote-description', sdp, promise)
 
     def get_stats(self):
-        pass 
+        pass
 
     def set_description_result(self, promise, element, _):
         ret = promise.wait()
@@ -158,7 +158,7 @@ class WebRTC(EventEmitter):
             print('add sink ========')
             return
 
-        # remote stream 
+        # remote stream
         decodebin = Gst.ElementFactory.make('decodebin')
         decodebin.connect('pad-added', self.on_incoming_decodebin_stream)
         self.pipe.add(decodebin)
@@ -169,12 +169,12 @@ class WebRTC(EventEmitter):
         # local stream
         if pad.direction == Gst.PadDirection.SINK:
             print('remove sink ========')
-            return 
+            return
 
         print('remove src =======')
 
     def on_incoming_decodebin_stream(self, element, pad):
-        
+
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
             return
@@ -209,7 +209,7 @@ class WebRTC(EventEmitter):
 if __name__ == '__main__':
     import time
 
-    loop = GObject.MainLoop()
+    loop = GLib.MainLoop()
     pc = WebRTC()
     @pc.on('offer')
     def on_offer(offer):
@@ -228,6 +228,6 @@ if __name__ == '__main__':
     pc.create_offer()
 
     loop.run()
-    
-    
-    
+
+
+
