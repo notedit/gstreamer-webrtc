@@ -206,28 +206,6 @@ class WebRTC(EventEmitter):
             resample.link(sink)
 
 
-if __name__ == '__main__':
-    import time
-
-    loop = GLib.MainLoop()
-    pc = WebRTC()
-    @pc.on('offer')
-    def on_offer(offer):
-        print(offer)
-        print(offer.sdp.as_text())
-
-    @pc.on('answer')
-    def on_answer(answer):
-        print(answer)
-
-    pc.add_transceiver(GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY, 'H264')
-    pc.add_transceiver(GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY, 'OPUS')
-
-    time.sleep(1)
-
-    pc.create_offer()
-
-    loop.run()
 
 
 
