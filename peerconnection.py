@@ -8,10 +8,10 @@ import attr
 from pyee import EventEmitter
 
 import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst
 gi.require_version('GObject', '2.0')
 from gi.repository import GObject
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst
 gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 gi.require_version('GstSdp', '1.0')
@@ -21,12 +21,18 @@ Gst.init(None)
 GObject.threads_init()
 
 PIPELINE_DESC = '''
-webrtcbin name=webrtc
+webrtcbin name=sendrecv
  videotestsrc pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.
+ queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
  audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
- queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! webrtc.
+ queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.
 '''
+
+
+VP8_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
+H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H264,payload=98,clock-rate=90000')
+OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
+
 
 class WebRTC(EventEmitter):
 
@@ -35,11 +41,12 @@ class WebRTC(EventEmitter):
 
         self.config = config
         self.pipe = Gst.parse_launch(PIPELINE_DESC)
-        self.webrtc = self.pipe.get_by_name('webrtc')
+        self.webrtc = self.pipe.get_by_name('sendrecv')
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.on_ice_candidate)
         self.webrtc.connect('pad-added', self.on_add_stream)
+        self.webrtc.connect('pad-removed', self.on_remove_stream)
         self.pipe.set_state(Gst.State.PLAYING)
 
     @property
@@ -58,73 +65,86 @@ class WebRTC(EventEmitter):
     def remote_description(self):
         return self.webrtc.get_property('remote-description')
 
-
     def on_negotiation_needed(self, element):
+        print('on_negotiation_needed')
         self.emit('negotiation-needed', element)
 
     def on_ice_candidate(self, element, mlineindex, candidate):
+        print('on_ice_candidate')
+
         self.emit('ice-candidate', {
             'sdpMLineIndex': mlineindex,
             'candidate': candidate
         })
 
     
-    def add_transceiver(self, direction, caps):
-        pass
+    def add_transceiver(self, direction, codec):
+        upcodec = codec.upper()
+        caps = None
+        if upcodec == 'H264':
+            caps = H264_CAPS
+        elif upcodec == 'VP8':
+            caps = VP8_CAPS
+        elif upcodec == 'OPUS':
+            caps = OPUS_CAPS
+        self.webrtc.emit('add-transceiver', direction, caps, None)
 
 
-    def create_offer(self, options=None):
+    def create_offer(self):
         promise = Gst.Promise.new_with_change_func(self.on_offer_created, self.webrtc, None)
-        self.webrtc.emit('create-offer', None, promise)
+        self.webrtc.emit('create-offer', Gst.Structure.new_empty('options'), promise)
+
 
     def on_offer_created(self, promise, element, _):
         ret = promise.wait()
         if ret != Gst.PromiseResult.REPLIED:
             return
-        offer = promise.get_reply().get_value('offer')
+        reply = promise.get_reply()
+        offer = reply.get_value('offer')
+        # offer.sdp.as_text()
         if offer:
             self.emit('offer', offer)
 
-        # offer.sdp.as_text()
+    def get_transceivers(self):
+        return self.webrtc.emit('get-transceivers',None)
 
     def create_answer(self, options=None):
         promise = Gst.Promise.new_with_change_func(self.on_answer_created, self.webrtc, None)
         self.webrtc.emit('create-answer', None, promise)
-    
+
+
     def on_answer_created(self, promise, element, _):
         ret = promise.wait()
         if ret != Gst.PromiseResult.REPLIED:
             return
-        answer = promise.get_reply().get_value('answer')
+        reply = promise.get_reply()
+        answer = reply.get_value('answer')
         if answer:
             self.emit('answer', answer)
+
 
     def add_ice_candidate(self, candidate,sdpMLineIndex):
         self.webrtc.emit('add-ice-candidate', sdpmlineindex, candidate)
 
-    def set_local_description(self, sdp, sdptype):
-        _, sdpmsg = GstSdp.SDPMessage.new()
-        GstSdp.sdp_message_parse_buffer(bytes(sdp), sdpmsg)
-        sdptype = GstWebRTC.WebRTCSDPType.ANSWE if sdptype == 'answer' else GstWebRTC.WebRTCSDPType.OFFER
-        sdp = GstWebRTC.WebRTCSessionDescription.new(sdptype, sdpmsg)
+
+    def set_local_description(self, sdp):
         promise = Gst.Promise.new_with_change_func(self.set_description_result, self.webrtc, None)
         self.webrtc.emit('set-local-description', sdp, promise)
 
 
-    def set_remote_description(self, sdp, sdptype):
-        _, sdpmsg = GstSdp.SDPMessage.new()
-        GstSdp.sdp_message_parse_buffer(bytes(sdp), sdpmsg)
-        sdptype = GstWebRTC.WebRTCSDPType.ANSWE if sdptype == 'answer' else GstWebRTC.WebRTCSDPType.OFFER
-        sdp = GstWebRTC.WebRTCSessionDescription.new(sdptype, sdpmsg)
+    def set_remote_description(self, sdp):
         promise = Gst.Promise.new_with_change_func(self.set_description_result, self.webrtc, None)
         self.webrtc.emit('set-remote-description', sdp, promise)
+
+    def get_stats(self):
+        pass 
 
     def set_description_result(self, promise, element, _):
         ret = promise.wait()
         if ret != Gst.PromiseResult.REPLIED:
             return
         print('set description error')
-        
+
 
     def on_add_stream(self,element, pad):
         # local stream
@@ -139,6 +159,13 @@ class WebRTC(EventEmitter):
         decodebin.sync_state_with_parent()
         self.webrtc.link(decodebin)
 
+    def on_remove_stream(self, element, pad):
+        # local stream
+        if pad.direction == Gst.PadDirection.SINK:
+            print('remove sink ========')
+            return 
+
+        print('remove src =======')
 
     def on_incoming_decodebin_stream(self, element, pad):
         
@@ -176,6 +203,7 @@ class WebRTC(EventEmitter):
 if __name__ == '__main__':
     loop = GObject.MainLoop()
     pc = WebRTC()
+
     @pc.on('offer')
     def on_offer(offer):
         print(offer)
