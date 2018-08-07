@@ -21,18 +21,18 @@ from gi.repository import GLib
 Gst.init(None)
 
 PIPELINE_DESC = '''
-webrtcbin name=sendrecv
+webrtcbin name=webrtc
  videotestsrc pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.
+ queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.
  audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
- queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! sendrecv.
+ queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! webrtc.
 '''
 
 
 PIPELINE_DESC2 = '''
-webrtcbin name=sendrecv
+webrtcbin name=webrtc
  videotestsrc pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.'''
+ queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.'''
 
 
 VP8_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
@@ -46,8 +46,8 @@ class WebRTC(EventEmitter):
         super().__init__()
 
         self.config = config
-        self.pipe = Gst.parse_launch(PIPELINE_DESC2)
-        self.webrtc = self.pipe.get_by_name('sendrecv')
+        self.pipe = Gst.parse_launch(PIPELINE_DESC)
+        self.webrtc = self.pipe.get_by_name('webrtc')
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.on_ice_candidate)
