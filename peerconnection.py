@@ -29,6 +29,12 @@ webrtcbin name=sendrecv
 '''
 
 
+PIPELINE_DESC2 = '''
+webrtcbin name=sendrecv
+ videotestsrc pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+ queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! sendrecv.'''
+
+
 VP8_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
 H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H264,payload=98,clock-rate=90000')
 OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
@@ -40,7 +46,7 @@ class WebRTC(EventEmitter):
         super().__init__()
 
         self.config = config
-        self.pipe = Gst.parse_launch(PIPELINE_DESC)
+        self.pipe = Gst.parse_launch(PIPELINE_DESC2)
         self.webrtc = self.pipe.get_by_name('sendrecv')
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
@@ -87,7 +93,7 @@ class WebRTC(EventEmitter):
             caps = VP8_CAPS
         elif upcodec == 'OPUS':
             caps = OPUS_CAPS
-        self.webrtc.emit('add-transceiver', direction, caps, None)
+        self.webrtc.emit('add-transceiver', direction, caps)
 
 
     def create_offer(self):
@@ -201,19 +207,26 @@ class WebRTC(EventEmitter):
 
 
 if __name__ == '__main__':
+    import time
+
     loop = GObject.MainLoop()
     pc = WebRTC()
-
     @pc.on('offer')
     def on_offer(offer):
         print(offer)
+        print(offer.sdp.as_text())
 
     @pc.on('answer')
     def on_answer(answer):
         print(answer)
 
+    pc.add_transceiver(GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY, 'H264')
+    pc.add_transceiver(GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY, 'OPUS')
+
+    time.sleep(1)
+
     pc.create_offer()
-    
+
     loop.run()
     
     
