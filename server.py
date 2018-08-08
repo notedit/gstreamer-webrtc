@@ -46,7 +46,7 @@ def message(sid, data):
 def offer(sid,data):
     sdp = data['sdp']
     _,sdpmsg = GstSdp.SDPMessage.new()
-    GstSdp.sdp_message_parse_buffer(bytes(sdp, encoding='utf-8'), sdpmsg)
+    GstSdp.sdp_message_parse_buffer(bytes(sdp.encode()), sdpmsg)
     offer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.OFFER, sdpmsg)
 
     print(offer)
