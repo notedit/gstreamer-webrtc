@@ -40,20 +40,36 @@ H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H2
 OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
 
 
+class WebRTCConfig:
+
+    def __init__(self, stun_server=None, turn_server=None):
+        
+
+
 class WebRTC(EventEmitter):
 
-    def __init__(self,config=None):
+    def __init__(self,stun_server=None, turn_server=None):
         super().__init__()
 
-        self.config = config
+        self.stun_server = stun_server
+        self.turn_server = turn_server
         self.pipe = Gst.parse_launch(PIPELINE_DESC)
         self.webrtc = self.pipe.get_by_name('webrtc')
+
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.on_ice_candidate)
         self.webrtc.connect('pad-added', self.on_add_stream)
         self.webrtc.connect('pad-removed', self.on_remove_stream)
+
+        if self.stun_server:
+            self.webrtc.set_property('stun-server', self.stun_server)
+
+        if self.turn_server:
+            self.webrtc.set_property('turn-server', self.turn_server)
+            
         self.pipe.set_state(Gst.State.PLAYING)
+
 
     @property
     def connection_state(self):
