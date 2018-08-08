@@ -40,12 +40,6 @@ H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H2
 OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
 
 
-class WebRTCConfig:
-
-    def __init__(self, stun_server=None, turn_server=None):
-        
-
-
 class WebRTC(EventEmitter):
 
     def __init__(self,stun_server=None, turn_server=None):
@@ -88,13 +82,12 @@ class WebRTC(EventEmitter):
         return self.webrtc.get_property('remote-description')
 
     def on_negotiation_needed(self, element):
-        print('on_negotiation_needed')
         self.emit('negotiation-needed', element)
 
     def on_ice_candidate(self, element, mlineindex, candidate):
         print('on_ice_candidate')
 
-        self.emit('ice-candidate', {
+        self.emit('candidate', {
             'sdpMLineIndex': mlineindex,
             'candidate': candidate
         })
@@ -130,9 +123,9 @@ class WebRTC(EventEmitter):
     def get_transceivers(self):
         return self.webrtc.emit('get-transceivers',None)
 
-    def create_answer(self, options=None):
+    def create_answer(self):
         promise = Gst.Promise.new_with_change_func(self.on_answer_created, self.webrtc, None)
-        self.webrtc.emit('create-answer', None, promise)
+        self.webrtc.emit('create-answer', Gst.Structure.new_empty('options'), promise)
 
 
     def on_answer_created(self, promise, element, _):
@@ -145,8 +138,10 @@ class WebRTC(EventEmitter):
             self.emit('answer', answer)
 
 
-    def add_ice_candidate(self, candidate,sdpMLineIndex):
-        self.webrtc.emit('add-ice-candidate', sdpmlineindex, candidate)
+    def add_ice_candidate(self, candidate):
+        sdpMLineIndex = candidate['sdpMLineIndex']
+        _candidate = candidate['candidate']
+        self.webrtc.emit('add-ice-candidate', sdpMLineIndex, _candidate)
 
 
     def set_local_description(self, sdp):
@@ -166,6 +161,8 @@ class WebRTC(EventEmitter):
         if ret != Gst.PromiseResult.REPLIED:
             return
         print('set description error')
+        reply = promise.get_reply()
+        print(reply)
 
 
     def on_add_stream(self,element, pad):
