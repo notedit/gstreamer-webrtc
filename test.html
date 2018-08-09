@@ -13,8 +13,7 @@
     }
 </style>
 
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
 
 <script type='text/javascript'>
@@ -61,11 +60,10 @@
     {
         
         container = document.getElementById('container');
-        
-        var pc = new RTCPeerConnection({
-            // bundlePolicy: "max-bundle",
-            // rtcpMuxPolicy : "require"
-        });
+        var rtc_configuration = {iceServers: [{urls: "stun:stun.services.mozilla.com"},
+                                      {urls: "stun:stun.l.google.com:19302"}]};
+
+        var pc = new RTCPeerConnection(rtc_configuration);
         
         
         pc.onaddstream = function(event) {
@@ -81,14 +79,20 @@
         };
 
         pc.onicecandidate = function(event) {
-
-            socket.emit('candidate', {candidate:event.candidate})
+            console.debug(event.candidate);
+            
+            if (event.candidate == null){
+                return;
+            } else {
+                console.debug('=================================');
+            }
+            socket.send(JSON.stringify({candidate:event.candidate}));
         }
 
 
-        socket = io({transports: ['websocket']});
+        socket = new WebSocket('ws://localhost:8000/');
 
-        socket.on('connect', async () => {
+        socket.onopen = async () => {
 
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
@@ -99,39 +103,58 @@
             addVideoForStream(stream,true);
             // we add stream later 
             pc.addStream(stream);
-            //Create new offer
-            const offer = await pc.createOffer({
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true
-            });
-            //Set it
-            pc.setLocalDescription(offer);
-            console.log("offer ==== ",offer.sdp);
+            // //Create new offer
+            // const offer = await pc.createOffer({
+            //     offerToReceiveAudio: true,
+            //     offerToReceiveVideo: true
+            // });
+            // //Set it
+            // pc.setLocalDescription(offer);
+            // console.log("offer ==== ",offer.sdp);
 
-            socket.emit('offer', {sdp:offer.sdp})
+            socket.send(JSON.stringify({join:'aaaaa'}));
 
-        })
+        };
 
-        socket.on('answer', async (data) =>{
-            
-            //Create answer
-            const answer = new RTCSessionDescription({
-                type	:'answer',
-                sdp	: data.sdp
-            }); 
 
-            console.log('answer============');
-            console.log(data.sdp)
 
-            pc.setRemoteDescription(answer); 
-        })
+        socket.onmessage  = async (event) =>{
+            var data = JSON.parse(event.data);
+            console.log(data);
+            if (data.answer) {
+                //Create answer
+                const answer = new RTCSessionDescription({
+                    type	:'answer',
+                    sdp	: data.answer
+                }); 
+                console.debug(answer.sdp);
+                await pc.setRemoteDescription(answer); 
+            }
 
-        socket.on('candidate', async (data) => {
+            if (data.offer) {
+                const offer = new RTCSessionDescription({
+                    type	:'offer',
+                    sdp	: data.offer
+                }); 
+                console.debug(offer.sdp);
+                await pc.setRemoteDescription(offer); 
+                const answer = await pc.createAnswer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                })
+                await pc.setLocalDescription(answer);
 
-            console.log('candidate', data)
-            const candidate = new RTCIceCandidate(data);
-            pc.addIceCandidate(candidate);
-        })
+                 socket.send(JSON.stringify({answer:answer.sdp}));
+            }
+
+            if (data.candidate) {
+                console.log(data.candidate);
+                var candidate = new RTCIceCandidate(data.candidate);
+                console.log(candidate);
+                pc.addIceCandidate(candidate);
+            }
+
+        };
 
     }
     console.log("let gogo");

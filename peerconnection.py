@@ -22,7 +22,7 @@ Gst.init(None)
 
 PIPELINE_DESC = '''
 webrtcbin name=webrtc
- videotestsrc pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+ videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
  queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.
  audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
  queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! webrtc.
@@ -50,6 +50,8 @@ class WebRTC(EventEmitter):
         self.pipe = Gst.parse_launch(PIPELINE_DESC)
         self.webrtc = self.pipe.get_by_name('webrtc')
 
+        self.srs_pads = []
+        self.sink_pads = []
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.on_ice_candidate)
@@ -85,7 +87,6 @@ class WebRTC(EventEmitter):
         self.emit('negotiation-needed', element)
 
     def on_ice_candidate(self, element, mlineindex, candidate):
-        print('on_ice_candidate')
 
         self.emit('candidate', {
             'sdpMLineIndex': mlineindex,
@@ -107,25 +108,23 @@ class WebRTC(EventEmitter):
 
     def create_offer(self):
         promise = Gst.Promise.new_with_change_func(self.on_offer_created, self.webrtc, None)
-        self.webrtc.emit('create-offer', Gst.Structure.new_empty('options'), promise)
+        self.webrtc.emit('create-offer', None, promise)
 
 
     def on_offer_created(self, promise, element, _):
-        ret = promise.wait()
-        if ret != Gst.PromiseResult.REPLIED:
-            return
+        promise.wait()
         reply = promise.get_reply()
         offer = reply.get_value('offer')
-        # offer.sdp.as_text()
         if offer:
             self.emit('offer', offer)
 
+
     def get_transceivers(self):
-        return self.webrtc.emit('get-transceivers',None)
+        return self.webrtc.emit('get-transceivers')
 
     def create_answer(self):
         promise = Gst.Promise.new_with_change_func(self.on_answer_created, self.webrtc, None)
-        self.webrtc.emit('create-answer', Gst.Structure.new_empty('options'), promise)
+        self.webrtc.emit('create-answer', None, promise)
 
 
     def on_answer_created(self, promise, element, _):
@@ -138,20 +137,24 @@ class WebRTC(EventEmitter):
             self.emit('answer', answer)
 
 
-    def add_ice_candidate(self, candidate):
-        sdpMLineIndex = candidate['sdpMLineIndex']
-        _candidate = candidate['candidate']
-        self.webrtc.emit('add-ice-candidate', sdpMLineIndex, _candidate)
+    def add_ice_candidate(self, ice):
+        sdpMLineIndex = ice['sdpMLineIndex']
+        candidate = ice['candidate']
+        self.webrtc.emit('add-ice-candidate', sdpMLineIndex, candidate)
 
 
     def set_local_description(self, sdp):
-        promise = Gst.Promise.new_with_change_func(self.set_description_result, self.webrtc, None)
+        #promise = Gst.Promise.new_with_change_func(self.set_description_result, self.webrtc, None)
+        promise = Gst.Promise.new()
         self.webrtc.emit('set-local-description', sdp, promise)
-
+        promise.interrupt()
 
     def set_remote_description(self, sdp):
-        promise = Gst.Promise.new_with_change_func(self.set_description_result, self.webrtc, None)
+        #promise = Gst.Promise.new_with_change_func(self.set_description_result, self.webrtc, None)
+        promise = Gst.Promise.new()
         self.webrtc.emit('set-remote-description', sdp, promise)
+        promise.interrupt()
+
 
     def get_stats(self):
         pass
@@ -193,15 +196,15 @@ class WebRTC(EventEmitter):
             return
 
         caps = pad.get_current_caps()
-        assert (len(caps))
-        s = caps[0]
-        print('on_incoming_decodebin_stream', caps)
-        name = s.get_name()
+        name = caps.to_string()
+        print(caps)
         if name.startswith('video'):
             q = Gst.ElementFactory.make('queue')
             conv = Gst.ElementFactory.make('videoconvert')
-            sink = Gst.ElementFactory.make('autovideosink')
-            self.pipe.add(q, conv, sink)
+            sink = Gst.ElementFactory.make('fakesink')
+            self.pipe.add(q)
+            self.pipe.add(conv)
+            self.pipe.add(sink)
             self.pipe.sync_children_states()
             pad.link(q.get_static_pad('sink'))
             q.link(conv)
@@ -211,7 +214,10 @@ class WebRTC(EventEmitter):
             conv = Gst.ElementFactory.make('audioconvert')
             resample = Gst.ElementFactory.make('audioresample')
             sink = Gst.ElementFactory.make('autoaudiosink')
-            self.pipe.add(q, conv, resample, sink)
+            self.pipe.add(q)
+            self.pipe.add(conv)
+            self.pipe.add(resample)
+            self.pipe.add(sink)
             self.pipe.sync_children_states()
             pad.link(q.get_static_pad('sink'))
             q.link(conv)

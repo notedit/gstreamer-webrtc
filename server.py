@@ -1,8 +1,9 @@
-import socketio
-import eventlet
-import eventlet.wsgi
-from flask import Flask
-from flask import render_template
+
+
+import json
+import asyncio
+import websockets
+
 
 from peerconnection import WebRTC
 
@@ -12,79 +13,76 @@ from gi.repository import GstSdp
 gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 
-sio = socketio.Server()
-app = Flask(__name__,template_folder='./')
+
 
 
 rtcs = {}
 
+async def hello(websocket, path):
 
-@app.route('/')
-def index():
-    return render_template('test.html')
-    
-
-@sio.on('connect')
-def connect(sid, environ):
-    print('connect ', sid)
+    print('path',path)
 
     rtc = WebRTC()
-    rtcs[sid] = rtc
-
-@sio.on('disconnect')
-def disconnect(sid):
-    print('disconnect', sid)
-
-
-@sio.on('message')
-def message(sid, data):
-    print('message', data)
-    sio.emit('reply', room=sid)
-
-
-@sio.on('offer')
-def offer(sid,data):
-    sdp = data['sdp']
-    _,sdpmsg = GstSdp.SDPMessage.new()
-    GstSdp.sdp_message_parse_buffer(bytes(sdp.encode()), sdpmsg)
-    offer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.OFFER, sdpmsg)
-
-    print(offer)
-
-    rtc = rtcs[sid]
-
-    @rtc.on('answer')
-    def on_answer(answer):
-        sio.emit('answer', {'sdp':answer.sdp.as_text()}, room=sid)
-        print(answer.sdp.as_text())
-        rtc.set_local_description(answer)
-        print('aaaaa')
-        sio.emit('aaaaaaaaaa',room=sid)
+    rtcs[websocket] = rtc
 
     @rtc.on('candidate')
     def on_candidate(candidate):
-        sio.emit('candidate', candidate, room=sid)
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(websocket.send(json.dumps({
+            'candidate':candidate
+        })))
+        print('send candidate', candidate)
 
-    rtc.set_remote_description(offer)
+    @rtc.on('answer')
+    def on_answer(answer):
+        rtc.set_local_description(answer)
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(websocket.send(json.dumps({
+            'answer':answer.sdp.as_text()
+        })))
+        print('send answer', answer.sdp.as_text())
+
+    @rtc.on('offer')
+    def on_offer(offer):
+        rtc.set_local_description(offer)
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(websocket.send(json.dumps({
+            'offer':offer.sdp.as_text()
+        })))
+        print('send offer', offer.sdp.as_text())
+
+
+    @rtc.on('negotiation-needed')
+    def on_negotiation_needed(element):
+        print('negotiation-needed', element)
     
-    rtc.create_answer()
 
-    
+    try:
+        async for message in websocket:
+            print(message)
+            msg = json.loads(message)
 
-@sio.on('candidate')
-def candidate(sid,data):
+            if msg.get('join'):
+                rtc.create_offer()
 
-    rtc = rtcs[sid]
+            if msg.get('answer'):
+                sdp = msg['answer']
+                _,sdpmsg = GstSdp.SDPMessage.new()
+                GstSdp.sdp_message_parse_buffer(bytes(sdp.encode()), sdpmsg)
+                answer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.ANSWER, sdpmsg)
+                rtc.set_remote_description(answer)
 
-    candidate = data['candidate']
-    if candidate is None:
-        return
+                
+            if msg.get('candidate') and msg['candidate'].get('candidate'):
+                print('add_ice_candidate')
+                rtc.add_ice_candidate(msg['candidate'])
+
+    finally:
+        print('leave===========')
 
 
-    print('socketio receive candidate', data)
-    rtc.add_ice_candidate(candidate)
 
+start_server = websockets.serve(hello, '0.0.0.0', 8000)
 
-if __name__ == '__main__':
-    app = socketio.Middleware(sio, app)
-    eventlet.wsgi.server(eventlet.listen(('',8000)), app)
+asyncio.get_event_loop().run_until_complete(start_server)
+asyncio.get_event_loop().run_forever()
