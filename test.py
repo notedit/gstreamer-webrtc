@@ -25,8 +25,8 @@ def on_offer(offer):
 def on_answer(answer):
     print(answer)
 
-pc.add_transceiver(GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY, 'H264')
-pc.add_transceiver(GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY, 'OPUS')
+pc.add_transceiver(WebRTC.RECVONLY, 'H264')
+pc.add_transceiver(WebRTC.RECVONLY, 'OPUS')
 
 time.sleep(1)
 
