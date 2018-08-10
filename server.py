@@ -5,7 +5,7 @@ import asyncio
 import websockets
 
 
-from peerconnection import WebRTC
+from webrtc import WebRTC
 
 import gi
 gi.require_version('GstSdp', '1.0')

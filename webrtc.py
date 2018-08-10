@@ -29,13 +29,17 @@ webrtcbin name=webrtc
 '''
 
 
-
 VP8_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
 H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H264,payload=98,clock-rate=90000')
 OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
 
 
 class WebRTC(EventEmitter):
+
+    INACTIVE = GstWebRTC.WebRTCRTPTransceiverDirection.INACTIVE
+    SENDONLY = GstWebRTC.WebRTCRTPTransceiverDirection.SENDONLY
+    RECVONLY = GstWebRTC.WebRTCRTPTransceiverDirection.RECVONLY
+    SENDRECV = GstWebRTC.WebRTCRTPTransceiverDirection.SENDRECV
 
     def __init__(self,stun_server=None, turn_server=None):
         super().__init__()
@@ -183,7 +187,6 @@ class WebRTC(EventEmitter):
             print('remove sink ========')
             return
 
-        print('remove src =======')
 
     def on_incoming_decodebin_stream(self, element, pad):
 

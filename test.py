@@ -9,7 +9,7 @@ from gi.repository import GLib
 gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 
-from peerconnection import WebRTC
+from webrtc import WebRTC
 
 loop = GLib.MainLoop()
 

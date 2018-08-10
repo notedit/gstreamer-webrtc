@@ -7,7 +7,8 @@ from gi.repository import GLib, GObject, Gst, GstPbutils
 
 Gst.init(None)
 
-class FileSource(Gst.Bin):
+
+class MediaStream(Gst.Bin):
 
     def __init__(self,filename):
         Gst.Bin.__init__(self)
@@ -36,23 +37,28 @@ class FileSource(Gst.Bin):
         self.volume.link(self.audioident)
         self.videoconvert.link(self.videoident)
 
-        audio_srcpad = Gst.GhostPad.new('audio_src', self.audioident.get_static_pad('src'))
-        self.add_pad(audio_srcpad)
+        self.audio_srcpad = Gst.GhostPad.new('audio_src', self.audioident.get_static_pad('src'))
+        self.add_pad(self.audio_srcpad)
 
-        video_srcpad = Gst.GhostPad.new('video_src', self.videoident.get_static_pad('src'))
-        self.add_pad(video_srcpad)
+        self.video_srcpad = Gst.GhostPad.new('video_src', self.videoident.get_static_pad('src'))
+        self.add_pad(self.video_srcpad)
         self.dbin.connect('pad-added', self._new_decoded_pad)
+        
+    @property
+    def video_pad(self):
+        return self.video_srcpad
 
+    @property
+    def audio_pad(self):
+        return self.audio_srcpad
 
     def _new_decoded_pad(self, dbin, pad):
-
         caps = pad.get_current_caps()
         structure_name = caps.to_string()
 
         if structure_name.startswith('audio'):
             if not pad.is_linked():
                 pad.link(self.audioconvert.get_static_pad('sink'))
-
 
         if structure_name.startswith('video'):
             if not pad.is_linked():
