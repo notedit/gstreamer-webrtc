@@ -29,11 +29,6 @@ webrtcbin name=webrtc
 '''
 
 
-PIPELINE_DESC2 = '''
-webrtcbin name=webrtc
- videotestsrc pattern=ball ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.'''
-
 
 VP8_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
 H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H264,payload=98,clock-rate=90000')
@@ -118,14 +113,15 @@ class WebRTC(EventEmitter):
         if offer:
             self.emit('offer', offer)
 
+    def add_incoming(self, source):
+        pass
 
-    def get_transceivers(self):
-        return self.webrtc.emit('get-transceivers')
+    def remove_incoming(self, source):
+        pass
 
     def create_answer(self):
         promise = Gst.Promise.new_with_change_func(self.on_answer_created, self.webrtc, None)
         self.webrtc.emit('create-answer', None, promise)
-
 
     def on_answer_created(self, promise, element, _):
         ret = promise.wait()
