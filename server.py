@@ -45,7 +45,7 @@ async def hello(websocket, path):
     @rtc.on('offer')
     def on_offer(offer):
         rtc.set_local_description(offer)
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         loop.run_until_complete(websocket.send(json.dumps({
             'offer':offer.sdp.as_text()
         })))

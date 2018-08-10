@@ -106,17 +106,24 @@ class WebRTC(EventEmitter):
         self.webrtc.emit('add-transceiver', direction, caps)
 
 
-    def create_offer(self):
-        promise = Gst.Promise.new_with_change_func(self.on_offer_created, self.webrtc, None)
+    async def create_offer(self):
+        future = asyncio.Future()
+        promise = Gst.Promise.new_with_change_func(self.on_offer_created, self.webrtc, future)
         self.webrtc.emit('create-offer', None, promise)
+        print(asyncio.get_event_loop())
+        offer = await asyncio.wait_for(future,100)
+        return offer
+        #asyncio.get_event_loop().run_until_complete(future)
 
-
-    def on_offer_created(self, promise, element, _):
+    def on_offer_created(self, promise, element, future):
+        print('1111111')
         promise.wait()
         reply = promise.get_reply()
         offer = reply.get_value('offer')
-        if offer:
-            self.emit('offer', offer)
+        future.set_result(offer)
+        print('22222222')
+        print(asyncio.get_event_loop())
+        #future.cancel()
 
 
     def get_transceivers(self):
