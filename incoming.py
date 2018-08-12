@@ -29,6 +29,10 @@ H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H2
 OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
 
 
+def raw2rtpbin(encodeing,playload,clock_rate):
+    pass
+
+
 class MediaStreamBase(Gst.Bin):
 
     def __init__(self):
@@ -83,7 +87,7 @@ class TestMediaStream(MediaStreamBase):
         videoenc.set_property('deadline',1)
         videortppay = make_element('rtpvp8pay')
         videocapsfilter = make_element('capsfilter')
-        videocapsfilter.set_property('caps', VP8_CAPS)
+        videocapsfilter.set_property('caps', self.video_caps)
         videoqueue = make_element('queue')
         self.add(videosrc)
         self.add(videoconvert)
@@ -111,7 +115,7 @@ class TestMediaStream(MediaStreamBase):
         audioenc = make_element('opusenc')
         audiortppay = make_element('rtpopuspay')
         audiocapsfilter = make_element('capsfilter')
-        audiocapsfilter.set_property('caps', OPUS_CAPS)
+        audiocapsfilter.set_property('caps', self.audio_caps)
         audioqueue = make_element('queue')
 
         self.add(audiosrc)
@@ -131,7 +135,7 @@ class TestMediaStream(MediaStreamBase):
         self.audio_srcpad = Gst.GhostPad.new('audio_src', self.audioqueue.get_static_pad('src'))
         self.add_pad(self.audio_srcpad)
 
-        
+
 
 class FileMediaStream(MediaStreamBase):
 
@@ -173,6 +177,9 @@ class FileMediaStream(MediaStreamBase):
     @property
     def audio_pad(self):
         return self.audio_srcpad
+
+    def setup_bin(self):
+        pass
 
     def _new_decoded_pad(self, dbin, pad):
         caps = pad.get_current_caps()
