@@ -34,6 +34,7 @@ H264_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=H2
 OPUS_CAPS = Gst.Caps.from_string('application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000')
 
 
+
 class WebRTC(EventEmitter):
 
     INACTIVE = GstWebRTC.WebRTCRTPTransceiverDirection.INACTIVE
@@ -46,11 +47,12 @@ class WebRTC(EventEmitter):
 
         self.stun_server = stun_server
         self.turn_server = turn_server
-        self.pipe = Gst.parse_launch(PIPELINE_DESC)
-        self.webrtc = self.pipe.get_by_name('webrtc')
+        self.streams = []
 
-        self.srs_pads = []
-        self.sink_pads = []
+        self.pipe = Gst.Pipeline.new('webrtc')
+        self.webrtc = Gst.ElementFactory.make('webrtcbin')
+        self.pipe.add(self.webrtc)
+
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.on_ice_candidate)
@@ -62,7 +64,11 @@ class WebRTC(EventEmitter):
 
         if self.turn_server:
             self.webrtc.set_property('turn-server', self.turn_server)
-            
+
+        bus = self.pipe.get_bus()
+        bus.add_signal_watch()
+        bus.connect('message', self._bus_call, None)
+
         self.pipe.set_state(Gst.State.PLAYING)
 
 
@@ -86,7 +92,6 @@ class WebRTC(EventEmitter):
         self.emit('negotiation-needed', element)
 
     def on_ice_candidate(self, element, mlineindex, candidate):
-
         self.emit('candidate', {
             'sdpMLineIndex': mlineindex,
             'candidate': candidate
@@ -102,7 +107,7 @@ class WebRTC(EventEmitter):
             caps = VP8_CAPS
         elif upcodec == 'OPUS':
             caps = OPUS_CAPS
-        self.webrtc.emit('add-transceiver', direction, caps)
+        return self.webrtc.emit('add-transceiver', direction, caps)
 
 
     def create_offer(self):
@@ -117,12 +122,40 @@ class WebRTC(EventEmitter):
         if offer:
             self.emit('offer', offer)
 
-    def add_incoming(self, source):
-        pass
+    def add_stream(self, stream):
+        self.pipe.add(stream)
 
-    def remove_incoming(self, source):
-        pass
+        if stream.audio_pad:
+            audio_sink_pad = self.webrtc.get_request_pad('sink_%u')
+            stream.audio_pad.link(audio_sink_pad)
 
+        if stream.video_pad:
+            video_sink_pad = self.webrtc.get_request_pad('sink_%u')
+            stream.video_pad.link(video_sink_pad)
+
+        stream.sync_state_with_parent()
+        self.streams.append(stream)
+
+    def remove_stream(self, stream):
+        if not stream in self.streams:
+            return
+
+        stream.set_state(Gst.State.NULL)
+        
+        if stream.audio_pad:
+            sink_pad = stream.audio_pad.get_peer()
+            stream.audio_pad.unlik(sink_pad)
+            self.webrtc.release_request_pad(sink_pad)
+
+        if stream.video_pad:
+            sink_pad = stream.video_pad.get_peer()
+            stream.video_pad.unlink(sink_pad)
+            self.webrtc.release_request_pad(sink_pad)
+
+        self.webrtc.remove(stream)
+        self.streams.remove(stream)
+
+        
     def create_answer(self):
         promise = Gst.Promise.new_with_change_func(self.on_answer_created, self.webrtc, None)
         self.webrtc.emit('create-answer', None, promise)
@@ -155,7 +188,6 @@ class WebRTC(EventEmitter):
         self.webrtc.emit('set-remote-description', sdp, promise)
         promise.interrupt()
 
-
     def get_stats(self):
         pass
 
@@ -166,6 +198,16 @@ class WebRTC(EventEmitter):
         print('set description error')
         reply = promise.get_reply()
         print(reply)
+
+
+    def _bus_call(self, bus, message, _):
+        t = message.type
+        if t == Gst.MessageType.EOS:
+            print('End-of-stream')
+        elif t == Gst.MessageType.ERROR:
+            err, debug = message.parse_error()
+            print('Error: %s: %s\n' % (err, debug))
+        return True
 
 
     def on_add_stream(self,element, pad):
