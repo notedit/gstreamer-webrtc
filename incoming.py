@@ -101,7 +101,7 @@ class TestMediaStream(MediaStreamBase):
         videortppay.link(videocapsfilter)
         videocapsfilter.link(videoqueue)
 
-        self.video_srcpad = Gst.GhostPad.new('video_src', self.videoqueue.get_static_pad('src'))
+        self.video_srcpad = Gst.GhostPad.new('video_src', videoqueue.get_static_pad('src'))
         self.add_pad(self.video_srcpad)
         
         """
@@ -132,7 +132,7 @@ class TestMediaStream(MediaStreamBase):
         audiortppay.link(audiocapsfilter)
         audiocapsfilter.link(audioqueue)
 
-        self.audio_srcpad = Gst.GhostPad.new('audio_src', self.audioqueue.get_static_pad('src'))
+        self.audio_srcpad = Gst.GhostPad.new('audio_src', audioqueue.get_static_pad('src'))
         self.add_pad(self.audio_srcpad)
 
 

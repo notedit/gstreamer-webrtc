@@ -10,6 +10,7 @@ gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 
 from webrtc import WebRTC
+from incoming import TestMediaStream
 
 loop = GLib.MainLoop()
 
@@ -25,11 +26,25 @@ def on_offer(offer):
 def on_answer(answer):
     print(answer)
 
-pc.add_transceiver(WebRTC.RECVONLY, 'H264')
-pc.add_transceiver(WebRTC.RECVONLY, 'OPUS')
+# pc.add_transceiver(WebRTC.RECVONLY, 'H264')
+# pc.add_transceiver(WebRTC.RECVONLY, 'OPUS')
+
+
+
 
 time.sleep(1)
 
 pc.create_offer()
+
+
+
+stream = TestMediaStream()
+
+pc.add_stream(stream)
+
+time.sleep(1)
+
+pc.create_offer()
+
 
 loop.run()
