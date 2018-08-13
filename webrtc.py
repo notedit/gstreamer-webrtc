@@ -140,22 +140,20 @@ class WebRTC(EventEmitter):
         if not stream in self.streams:
             return
 
-        stream.set_state(Gst.State.NULL)
-        
         if stream.audio_pad:
             sink_pad = stream.audio_pad.get_peer()
-            stream.audio_pad.unlik(sink_pad)
+            #stream.audio_pad.unlik(sink_pad)
             self.webrtc.release_request_pad(sink_pad)
 
         if stream.video_pad:
             sink_pad = stream.video_pad.get_peer()
-            stream.video_pad.unlink(sink_pad)
+            #stream.video_pad.unlink(sink_pad)
             self.webrtc.release_request_pad(sink_pad)
-
-        self.webrtc.remove(stream)
+            
+        self.pipe.remove(stream)
         self.streams.remove(stream)
 
-        
+
     def create_answer(self):
         promise = Gst.Promise.new_with_change_func(self.on_answer_created, self.webrtc, None)
         self.webrtc.emit('create-answer', None, promise)
