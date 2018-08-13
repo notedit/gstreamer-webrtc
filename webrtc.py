@@ -18,15 +18,17 @@ gi.require_version('GstSdp', '1.0')
 from gi.repository import GstSdp
 from gi.repository import GLib
 
+from outgoing import FileSink
+
 Gst.init(None)
 
-PIPELINE_DESC = '''
-webrtcbin name=webrtc
- videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
- queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.
- audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
- queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! webrtc.
-'''
+# PIPELINE_DESC = '''
+# webrtcbin name=webrtc
+#  videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
+#  queue ! application/x-rtp,media=video,encoding-name=VP8,payload=97 ! webrtc.
+#  audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+#  queue ! application/x-rtp,media=audio,encoding-name=OPUS,payload=96 ! webrtc.
+# '''
 
 
 VP8_CAPS = Gst.Caps.from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
@@ -53,7 +55,6 @@ class WebRTC(EventEmitter):
         self.webrtc = Gst.ElementFactory.make('webrtcbin')
         self.pipe.add(self.webrtc)
 
-
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
         self.webrtc.connect('on-ice-candidate', self.on_ice_candidate)
         self.webrtc.connect('pad-added', self.on_add_stream)
@@ -70,6 +71,10 @@ class WebRTC(EventEmitter):
         bus.connect('message', self._bus_call, None)
 
         self.pipe.set_state(Gst.State.PLAYING)
+
+        # todo test FileSink
+
+        self.filesink = FileSink()
 
 
     @property
@@ -96,7 +101,6 @@ class WebRTC(EventEmitter):
             'sdpMLineIndex': mlineindex,
             'candidate': candidate
         })
-
 
     def add_transceiver(self, direction, codec):
         upcodec = codec.upper()
@@ -139,7 +143,7 @@ class WebRTC(EventEmitter):
     def remove_stream(self, stream):
         if not stream in self.streams:
             return
-
+        # todo need fix create offer error  when remove source
         #stream.set_state(Gst.State.NULL)
 
         if stream.audio_pad:
@@ -150,7 +154,7 @@ class WebRTC(EventEmitter):
             sink_pad = stream.video_pad.get_peer()
             self.webrtc.release_request_pad(sink_pad)
 
-        self.pipe.remove(stream)
+        #self.pipe.remove(stream)
         self.streams.remove(stream)
 
 
@@ -211,15 +215,25 @@ class WebRTC(EventEmitter):
     def on_add_stream(self,element, pad):
         # local stream
         if pad.direction == Gst.PadDirection.SINK:
-            print('add sink ========')
+            print('add local  ========')
             return
 
         # remote stream
-        decodebin = Gst.ElementFactory.make('decodebin')
-        decodebin.connect('pad-added', self.on_incoming_decodebin_stream)
-        self.pipe.add(decodebin)
-        decodebin.sync_state_with_parent()
-        self.webrtc.link(decodebin)
+        print('add remote ========')
+        # decodebin = Gst.ElementFactory.make('decodebin')
+        # decodebin.connect('pad-added', self.on_incoming_decodebin_stream)
+        # self.pipe.add(decodebin)
+        # decodebin.sync_state_with_parent()
+        # self.webrtc.link(decodebin)
+
+        parsebin = Gst.ElementFactory.make('parsebin')
+        self.pipe.add(parsebin)
+        parsebin.connect('pad-added', self.on_incoming_parsebin_pad)
+        parsebin.sync_state_with_parent()
+        self.webrtc.link(parsebin)
+
+
+
 
     def on_remove_stream(self, element, pad):
         # local stream
@@ -227,8 +241,11 @@ class WebRTC(EventEmitter):
             print('remove sink ========')
             return
 
+    def on_incoming_parsebin_pad(self, element, pad):
+        print('on_incoming_parsebin_pad', pad)
 
-    def on_incoming_decodebin_stream(self, element, pad):
+        
+    def on_incoming_decodebin_pad(self, element, pad):
 
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
@@ -236,7 +253,7 @@ class WebRTC(EventEmitter):
 
         caps = pad.get_current_caps()
         name = caps.to_string()
-        print(caps)
+        print(caps,to_string())
         if name.startswith('video'):
             q = Gst.ElementFactory.make('queue')
             conv = Gst.ElementFactory.make('videoconvert')

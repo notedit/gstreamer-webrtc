@@ -44,17 +44,8 @@ pc.add_stream(stream)
 
 time.sleep(1)
 
-pc.create_offer()
+pc.remove_stream(stream)
 
 
-time.sleep(1)
-
-# pc.remove_stream(stream)
-
-# print('remove')
-
-# time.sleep(1)
-
-pc.create_offer()
 
 loop.run()
