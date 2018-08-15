@@ -53,6 +53,7 @@ class WebRTC(EventEmitter):
 
         self.pipe = Gst.Pipeline.new('webrtc')
         self.webrtc = Gst.ElementFactory.make('webrtcbin')
+
         self.pipe.add(self.webrtc)
 
         self.webrtc.connect('on-negotiation-needed', self.on_negotiation_needed)
@@ -74,7 +75,7 @@ class WebRTC(EventEmitter):
 
         # todo test FileSink
 
-        self.filesink = FileSink()
+        self.filesink = FileSink('test.mkv')
 
 
     @property
@@ -243,6 +244,28 @@ class WebRTC(EventEmitter):
 
     def on_incoming_parsebin_pad(self, element, pad):
         print('on_incoming_parsebin_pad', pad)
+
+        if not pad.has_current_caps():
+            print(pad, 'has no caps, ignoring')
+            return
+
+        if not self.filesink in self.pipe.children:
+            self.pipe.add(self.filesink)
+            self.pipe.sync_children_states()
+
+        # link pad 
+        caps = pad.get_current_caps()
+        name = caps.to_string()
+
+        print(name)
+        print(element)
+
+        if 'video' in name:
+            video_srcpad = element.get_request_pad('src_%u')
+            video_srcpad.link(self.filesink.video_pad)
+        elif 'audio' in name:
+            audio_srcpad = element.get_request_pad('src_%u')
+            audio_srcpad.link(self.filesink.audio_pad)
 
         
     def on_incoming_decodebin_pad(self, element, pad):

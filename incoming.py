@@ -137,7 +137,7 @@ class TestMediaStream(MediaStream):
 
 
 
-class FileMediaStream(MediaStreamBase):
+class FileMediaStream(MediaStream):
 
     def __init__(self,filename):
         MediaStreamBase.__init__(self)

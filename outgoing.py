@@ -1,3 +1,5 @@
+import time
+
 import gi
 gi.require_version('Gst', '1.0')
 gi.require_version('GLib', '2.0')
