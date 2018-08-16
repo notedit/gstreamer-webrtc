@@ -18,7 +18,7 @@ gi.require_version('GstSdp', '1.0')
 from gi.repository import GstSdp
 from gi.repository import GLib
 
-from outgoing import FileSink
+from sink import FileSink
 
 Gst.init(None)
 

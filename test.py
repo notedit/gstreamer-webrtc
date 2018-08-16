@@ -10,7 +10,7 @@ gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 
 from webrtc import WebRTC
-from incoming import TestMediaStream
+from source import TestSource
 
 loop = GLib.MainLoop()
 
@@ -30,21 +30,21 @@ def on_answer(answer):
 # pc.add_transceiver(WebRTC.RECVONLY, 'OPUS')
 
 
+time.sleep(1)
 
+pc.create_offer()
+
+source = TestSource()
+
+pc.add_stream(source)
 
 time.sleep(1)
 
 pc.create_offer()
 
-
-
-stream = TestMediaStream()
-
-pc.add_stream(stream)
-
 time.sleep(1)
 
-pc.remove_stream(stream)
+pc.remove_stream(source)
 
 
 

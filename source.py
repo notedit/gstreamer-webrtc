@@ -33,7 +33,7 @@ def raw2rtpbin(encodeing,playload,clock_rate):
     pass
 
 
-class MediaStream(Gst.Bin):
+class Source(Gst.Bin):
 
     def __init__(self):
         Gst.Bin.__init__(self)
@@ -47,10 +47,10 @@ class MediaStream(Gst.Bin):
         raise 'need have video src pad'
 
 
-class TestMediaStream(MediaStream):
+class TestSource(Source):
 
     def __init__(self,video_caps=None,audio_caps=None):
-        MediaStream.__init__(self)
+        Source.__init__(self)
 
         if video_caps is None:
             self.video_caps = Gst.caps_from_string('application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000')
@@ -134,13 +134,12 @@ class TestMediaStream(MediaStream):
 
         self.audio_srcpad = Gst.GhostPad.new('audio_src', audioqueue.get_static_pad('src'))
         self.add_pad(self.audio_srcpad)
+                
 
-
-
-class FileMediaStream(MediaStream):
+class FileSource(Source):
 
     def __init__(self,filename):
-        MediaStreamBase.__init__(self)
+        Source.__init__(self)
 
         self.filename = filename
         self.filesrc = Gst.ElementFactory.make('filesrc')
