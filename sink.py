@@ -7,7 +7,6 @@ from gi.repository import Gst,GstPbutils
 
 from utils  import make_element,add_many,link_many
 
-
 Gst.init(None)
 
 class Sink(Gst.Bin):
@@ -23,6 +22,31 @@ class Sink(Gst.Bin):
     def video_pad(self):
         raise 'need have video src pad'
 
+class FakeSink(Sink):
+
+    def __init__(self):
+        Sink.__init__(self)
+
+        audio_fakesink = make_element('fakesink')
+        video_fakesink = make_element('fakesink')
+
+        self.add(audio_fakesink)
+        self.add(video_fakesink)
+
+        self.audio_sinkpad = Gst.GhostPad.new('audio_sink', audio_fakesink.get_static_pad('sink'))
+        self.add_pad(self.audio_sinkpad)
+
+        self.video_sinkpad = Gst.GhostPad.new('video_sink', video_fakesink.get_static_pad('sink'))
+        self.add_pad(self.video_sinkpad)
+
+    @property
+    def audio_pad(self):
+        return self.audio_sinkpad
+       
+
+    @property
+    def video_pad(self):
+        return self.video_sinkpad
 
 class FileSink(Sink):
 

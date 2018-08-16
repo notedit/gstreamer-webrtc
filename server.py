@@ -6,7 +6,7 @@ import websockets
 
 
 from webrtc import WebRTC
-from incoming import TestMediaStream
+from source import TestSource
 
 import gi
 gi.require_version('GstSdp', '1.0')
@@ -56,10 +56,10 @@ async def hello(websocket, path):
     @rtc.on('negotiation-needed')
     def on_negotiation_needed(element):
         print('negotiation-needed', element)
+        
+    source  = TestSource()
 
-    mediastream = TestMediaStream()
-
-    rtc.add_stream(mediastream)
+    rtc.add_stream(source)
 
     try:
         async for message in websocket:
@@ -75,7 +75,6 @@ async def hello(websocket, path):
                 GstSdp.sdp_message_parse_buffer(bytes(sdp.encode()), sdpmsg)
                 answer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.ANSWER, sdpmsg)
                 rtc.set_remote_description(answer)
-
                 
             if msg.get('candidate') and msg['candidate'].get('candidate'):
                 print('add_ice_candidate')
