@@ -222,18 +222,18 @@ class WebRTC(EventEmitter):
         # remote stream
         print('add remote ========')
         # decodebin = Gst.ElementFactory.make('decodebin')
-        # decodebin.connect('pad-added', self.on_incoming_decodebin_stream)
+        # decodebin.connect('pad-added', self.on_incoming_decodebin_pad)
         # self.pipe.add(decodebin)
         # decodebin.sync_state_with_parent()
         # self.webrtc.link(decodebin)
 
         parsebin = Gst.ElementFactory.make('parsebin')
-        self.pipe.add(parsebin)
         parsebin.connect('pad-added', self.on_incoming_parsebin_pad)
+        self.pipe.add(parsebin)
         parsebin.sync_state_with_parent()
         self.webrtc.link(parsebin)
-
-
+        # sink_pad = parsebin.get_static_pad('sink')
+        # pad.link(sink_pad)
 
 
     def on_remove_stream(self, element, pad):
@@ -251,21 +251,31 @@ class WebRTC(EventEmitter):
 
         if not self.filesink in self.pipe.children:
             self.pipe.add(self.filesink)
-            self.pipe.sync_children_states()
+            self.filesink.sync_state_with_parent()
+
+        if pad.direction == Gst.PadDirection.SINK:
+            print('add local sink ========')
+
+        if pad.direction == Gst.PadDirection.SRC:
+            print('add local src =========')
 
         # link pad 
         caps = pad.get_current_caps()
         name = caps.to_string()
 
         print(name)
-        print(element)
 
         if 'video' in name:
-            video_srcpad = element.get_request_pad('src_%u')
-            video_srcpad.link(self.filesink.video_pad)
+            # video_srcpad = element.get_request_pad('src_%u')
+            # video_srcpad.link(self.filesink.video_pad)
+            pad.link(self.filesink.video_pad)
+            print('video pad link')
+
         elif 'audio' in name:
-            audio_srcpad = element.get_request_pad('src_%u')
-            audio_srcpad.link(self.filesink.audio_pad)
+            # audio_srcpad = element.get_request_pad('src_%u')
+            # audio_srcpad.link(self.filesink.audio_pad)
+            pad.link(self.filesink.audio_pad)
+            print('audio pad link')
 
         
     def on_incoming_decodebin_pad(self, element, pad):
@@ -273,10 +283,16 @@ class WebRTC(EventEmitter):
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
             return
+            
+        if pad.direction == Gst.PadDirection.SINK:
+            print('add local sink ========')
+
+        if pad.direction == Gst.PadDirection.SRC:
+            print('add local src =========')
 
         caps = pad.get_current_caps()
         name = caps.to_string()
-        print(caps,to_string())
+        print(name)
         if name.startswith('video'):
             q = Gst.ElementFactory.make('queue')
             conv = Gst.ElementFactory.make('videoconvert')

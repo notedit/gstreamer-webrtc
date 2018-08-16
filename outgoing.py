@@ -38,15 +38,19 @@ class FileSink(Sink):
         self.add(filesink)
         mux.link(filesink)
 
-        self.audio_sinkpad = Gst.GhostPad.new('audio_sink', mux.get_request_pad('audio_%u'))
+        self.mux = mux
+        
+        self.audio_sinkpad = Gst.GhostPad.new('audio_sink', self.mux.get_request_pad('audio_%u'))
         self.add_pad(self.audio_sinkpad)
 
-        self.video_sinkpad = Gst.GhostPad.new('video_sink', mux.get_request_pad('video_%u'))
+        self.video_sinkpad = Gst.GhostPad.new('video_sink', self.mux.get_request_pad('video_%u'))
         self.add_pad(self.video_sinkpad)
+
 
     @property
     def audio_pad(self):
         return self.audio_sinkpad
+       
 
     @property
     def video_pad(self):
