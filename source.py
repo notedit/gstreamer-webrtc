@@ -276,8 +276,71 @@ class RTMPSource(Source):
             self.video_srcpad = self.videobin.get_static_pad('src')
 
 
+
+RTSP_AUDIO_BIN_STR = '''
+faad ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! 
+application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue
+'''
+
+RTSP_VIDEO_BIN_STR = '''
+rtph264pay config-interval=-1 ! application/x-rtp,media=video,encoding-name=H264,payload=98,clock-rate=90000 ! queue
+'''
+
+
 class RTSPSource(Source):
 
-    def __init__():
+    """
+    h264 + aac
+    """
+    def __init__(self, rtspURL):
         Source.__init__(self)
-        pass
+
+        self.rtspURL = rtspURL
+        rtspsrc = make_element('rtspsrc', {'location':self.rtspURL, 'latency':0})
+        parsebin = make_element('parsebin')
+
+        self.add(rtspsrc)
+        self.add(parsebin)
+
+        self.video_srcpad = None
+        self.audio_srcpad = None
+
+
+        rtspsrc.link(parsebin)
+        parsebin.connect('pad-added', self._new_parsed_pad)
+
+        self.audiobin = Gst.parse_bin_from_description(RTSP_AUDIO_BIN_STR,True)
+        self.videobin = Gst.parse_bin_from_description(RTSP_VIDEO_BIN_STR,True)
+
+
+    @property
+    def audio_pad(self):
+        return self.audio_srcpad
+
+    @property
+    def video_pad(self):
+        return self.video_srcpad
+
+
+    def _new_parsed_pad(self, element, pad):
+
+        caps = pad.get_current_caps()
+        name = caps.to_string()
+
+        if name.startswith('audio'):
+            if pad.is_linked():
+                return
+            self.add(self.audiobin)
+            self.sync_children_states()
+            sinkpad = self.audiobin.get_static_pad('sink')
+            pad.link(sinkpad)
+            self.audio_srcpad = self.audiobin.get_static_pad('src')
+
+        elif name.startswith('video'):
+            if pad.is_linked():
+                return
+            self.add(self.videobin)
+            self.sync_children_states()
+            sinkpad = self.videobin.get_static_pad('sink')
+            pad.link(sinkpad)
+            self.video_srcpad = self.videobin.get_static_pad('src')
