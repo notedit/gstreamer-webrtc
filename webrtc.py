@@ -62,7 +62,7 @@ class WebRTC(EventEmitter):
         bus = self.pipe.get_bus()
         bus.add_signal_watch()
         bus.connect('message', self._bus_call, None)
-        
+
         self.pipe.set_state(Gst.State.PLAYING)
 
         self.outsink = outsink if outsink else FakeSink()
@@ -136,8 +136,6 @@ class WebRTC(EventEmitter):
         if not stream in self.streams:
             return
         # todo need fix create offer error  when remove source
-        #stream.set_state(Gst.State.NULL)
-
         if stream.audio_pad:
             sink_pad = stream.audio_pad.get_peer()
             self.webrtc.release_request_pad(sink_pad)
@@ -146,7 +144,8 @@ class WebRTC(EventEmitter):
             sink_pad = stream.video_pad.get_peer()
             self.webrtc.release_request_pad(sink_pad)
 
-        #self.pipe.remove(stream)
+        if stream in self.pipe.children:
+            self.pipe.remove(stream)
         self.streams.remove(stream)
 
 

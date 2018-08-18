@@ -1,5 +1,5 @@
 
-
+import time
 import json
 import asyncio
 import websockets
@@ -7,6 +7,7 @@ import websockets
 
 from webrtc import WebRTC
 from source import TestSource
+from sink import FileSink,RTMPSink
 
 import gi
 gi.require_version('GstSdp', '1.0')
@@ -21,9 +22,10 @@ rtcs = {}
 
 async def hello(websocket, path):
 
-    print('path',path)
+    filesink = FileSink(str(time.time()) + '.mkv')
+    #rtmpsink = RTMPSink('rtmp://localhost/live/live')
 
-    rtc = WebRTC()
+    rtc = WebRTC(outsink=filesink)
     rtcs[websocket] = rtc
 
     @rtc.on('candidate')
@@ -75,7 +77,7 @@ async def hello(websocket, path):
                 GstSdp.sdp_message_parse_buffer(bytes(sdp.encode()), sdpmsg)
                 answer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.ANSWER, sdpmsg)
                 rtc.set_remote_description(answer)
-                
+
             if msg.get('candidate') and msg['candidate'].get('candidate'):
                 print('add_ice_candidate')
                 rtc.add_ice_candidate(msg['candidate'])
