@@ -18,7 +18,7 @@ gi.require_version('GstSdp', '1.0')
 from gi.repository import GstSdp
 from gi.repository import GLib
 
-from sink import FakeSink,FileSink,RTMPSink
+from .sink import FakeSink,FileSink,RTMPSink
 
 Gst.init(None)
 
@@ -67,7 +67,7 @@ class WebRTC(EventEmitter):
 
         self.outsink = outsink if outsink else FakeSink()
 
-        
+
 
     @property
     def connection_state(self):
@@ -228,7 +228,7 @@ class WebRTC(EventEmitter):
             self.pipe.add(self.outsink)
             self.outsink.sync_state_with_parent()
 
-        # link pad 
+        # link pad
         caps = pad.get_current_caps()
         name = caps.to_string()
 
@@ -237,7 +237,7 @@ class WebRTC(EventEmitter):
         elif 'audio' in name:
             pad.link(self.outsink.audio_pad)
 
-        
+
     def on_incoming_decodebin_pad(self, element, pad):
 
         if not pad.has_current_caps():
