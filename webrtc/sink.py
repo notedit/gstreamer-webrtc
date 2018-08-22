@@ -5,7 +5,7 @@ gi.require_version('Gst', '1.0')
 gi.require_version('GstPbutils', '1.0')
 from gi.repository import Gst,GstPbutils
 
-from utils  import make_element,add_many,link_many
+from .utils  import make_element,add_many,link_many
 
 Gst.init(None)
 
@@ -51,7 +51,7 @@ class FileSink(Sink):
 
     def __init__(self, filename):
         Sink.__init__(self)
-        
+
         mux = make_element('matroskamux',{'streamable':False})
         filesink = make_element('filesink', {'location':str(time.time()) + '.mkv'})
 
@@ -69,7 +69,7 @@ class FileSink(Sink):
     @property
     def audio_pad(self):
         return self.audio_sinkpad
-       
+
 
     @property
     def video_pad(self):
@@ -105,7 +105,7 @@ class RTMPSink(Sink):
         self.add(rtmpsink)
 
         encodebin.link(rtmpsink)
-        
+
         self.encodebin = encodebin
 
         self.audio_sinkpad = Gst.GhostPad.new('audio_sink', audiodecode.get_static_pad('sink'))
@@ -122,10 +122,10 @@ class RTMPSink(Sink):
     @property
     def video_pad(self):
         return self.video_sinkpad
-        
-        
+
+
     def _create_encoding_profile(self):
-        container = GstPbutils.EncodingContainerProfile.new('flv', None, 
+        container = GstPbutils.EncodingContainerProfile.new('flv', None,
                             Gst.Caps.new_empty_simple('video/x-flv'), None)
         # h264
         video = GstPbutils.EncodingVideoProfile.new(
@@ -133,7 +133,7 @@ class RTMPSink(Sink):
                         None, None, 0)
         # aac
         audio = GstPbutils.EncodingAudioProfile.new(
-                        Gst.Caps.from_string('audio/mpeg, mpegversion=4'), 
+                        Gst.Caps.from_string('audio/mpeg, mpegversion=4'),
                         None, None, 0)
 
         container.add_profile(video)
@@ -218,9 +218,9 @@ class RTMPSink2(Sink):
     def video_pad(self):
         return self.video_sinkpad
 
-    
+
     def on_decodebin_pad(self, element, pad):
-        
+
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
             return
@@ -241,7 +241,7 @@ class RTMPSink2(Sink):
 
 
     def on_parsebin_pad(self, element, pad):
-        
+
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
             return
@@ -259,7 +259,7 @@ class RTMPSink2(Sink):
 
 
     def _create_encoding_profile(self):
-        container = GstPbutils.EncodingContainerProfile.new('flv', None, 
+        container = GstPbutils.EncodingContainerProfile.new('flv', None,
                             Gst.Caps.new_empty_simple('video/x-flv'), None)
         # h264
         video = GstPbutils.EncodingVideoProfile.new(
@@ -267,7 +267,7 @@ class RTMPSink2(Sink):
                         None, None, 0)
         # aac
         audio = GstPbutils.EncodingAudioProfile.new(
-                        Gst.Caps.from_string('audio/mpeg, mpegversion=4'), 
+                        Gst.Caps.from_string('audio/mpeg, mpegversion=4'),
                         None, None, 0)
 
         container.add_profile(video)
@@ -277,7 +277,7 @@ class RTMPSink2(Sink):
 
 
 # for H264/OPUS, only do audio transcode
-# rtspclientsink 
+# rtspclientsink
 class RTSPSink(Sink):
 
     def __init__(self,rtspURL):
@@ -315,9 +315,9 @@ class RTSPSink(Sink):
     def video_pad(self):
         return self.video_sinkpad
 
-    
+
     def on_decodebin_pad(self, element, pad):
-        
+
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
             return
@@ -340,7 +340,7 @@ class RTSPSink(Sink):
             encode.link(self.rtspsink)
 
     def on_parsebin_pad(self, element, pad):
-        
+
         if not pad.has_current_caps():
             print(pad, 'has no caps, ignoring')
             return

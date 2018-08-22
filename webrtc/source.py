@@ -48,13 +48,13 @@ class Source(Gst.Bin):
 
 
 TEST_VIDEO_BIN_STR = '''
-videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay ! 
+videotestsrc ! videoconvert ! queue ! vp8enc deadline=1 ! rtpvp8pay !
 application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000 ! queue
 '''
 
 TEST_AUDIO_BIN_STR = '''
-audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay ! 
-application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue 
+audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay !
+application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue
 '''
 
 
@@ -115,9 +115,9 @@ class TestSource(Source):
 
         self.video_srcpad = Gst.GhostPad.new('video_src', videoqueue.get_static_pad('src'))
         self.add_pad(self.video_srcpad)
-        
+
         """
-        audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay ! queue 
+        audiotestsrc wave=red-noise ! audioconvert ! audioresample ! queue ! opusenc ! rtpopuspay ! queue
         """
 
         audiosrc = make_element('audiotestsrc')
@@ -149,13 +149,13 @@ class TestSource(Source):
 
 
 FILE_VIDEO_BIN_STR = '''
-videoconvert ! vp8enc deadline=1 ! rtpvp8pay ! 
+videoconvert ! vp8enc deadline=1 ! rtpvp8pay !
 application/x-rtp,media=video,encoding-name=VP8,payload=97,clock-rate=90000 ! queue
 '''
 
 FILE_AUDIO_BIN_STR = '''
-audioconvert ! audioresample ! opusenc ! rtpopuspay ! 
-application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue 
+audioconvert ! audioresample ! opusenc ! rtpopuspay !
+application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue
 '''
 
 class FileSource(Source):
@@ -213,7 +213,7 @@ class FileSource(Source):
 
 
 RTMP_AUDIO_BIN_STR = '''
-faad ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! 
+faad ! audioconvert ! audioresample ! opusenc ! rtpopuspay !
 application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue
 '''
 
@@ -253,7 +253,7 @@ class RTMPSource(Source):
 
 
     def _new_parsed_pad(self, element, pad):
-        
+
         caps = pad.get_current_caps()
         name = caps.to_string()
 
@@ -278,7 +278,7 @@ class RTMPSource(Source):
 
 
 RTSP_AUDIO_BIN_STR = '''
-faad ! audioconvert ! audioresample ! opusenc ! rtpopuspay ! 
+faad ! audioconvert ! audioresample ! opusenc ! rtpopuspay !
 application/x-rtp,media=audio,encoding-name=OPUS,payload=100,clock-rate=48000 ! queue
 '''
 
