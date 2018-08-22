@@ -6,8 +6,8 @@ import websockets
 
 
 from webrtc import WebRTC
-from source import TestSource
-from sink import FileSink,RTMPSink
+from webrtc import TestSource
+from webrtc import FileSink,RTMPSink
 
 import gi
 gi.require_version('GstSdp', '1.0')
@@ -58,7 +58,7 @@ async def hello(websocket, path):
     @rtc.on('negotiation-needed')
     def on_negotiation_needed(element):
         print('negotiation-needed', element)
-        
+
     source  = TestSource()
 
     rtc.add_stream(source)

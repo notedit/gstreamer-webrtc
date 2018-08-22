@@ -10,7 +10,7 @@ gi.require_version('GstWebRTC', '1.0')
 from gi.repository import GstWebRTC
 
 from webrtc import WebRTC
-from source import TestSource
+from webrtc import TestSource
 
 loop = GLib.MainLoop()
 
