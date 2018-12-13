@@ -59,6 +59,8 @@ class WebRTC(EventEmitter):
         if self.turn_server:
             self.webrtc.set_property('turn-server', self.turn_server)
 
+        self.webrtc.set_property('bundle-policy','max-bundle')
+
         bus = self.pipe.get_bus()
         bus.add_signal_watch()
         bus.connect('message', self._bus_call, None)
